@@ -2,7 +2,7 @@
 
 A clean, private, offline expense manager that lives in a single HTML file.
 
-**[Live Demo](https://pruthvendra.github.io/Expense-tracker/index.html)** | **[Buy on Gumroad](https://pruthven.gumroad.com/l/mexfan)**
+**[Live Demo](https://pruthvendra.github.io/Expense-tracker/)** | **[Buy on Gumroad](https://pruthven.gumroad.com/l/mexfan)**
 
 ---
 
@@ -21,7 +21,7 @@ A clean, private, offline expense manager that lives in a single HTML file.
 ## Live Demo
 
 Try it now — no download needed:  
-[https://pruthvendra.github.io/Expense-tracker/](https://pruthvendra.github.io/Expense-tracker/index.html)
+[https://pruthvendra.github.io/Expense-tracker/](https://pruthvendra.github.io/Expense-tracker/)
 
 ---
 
