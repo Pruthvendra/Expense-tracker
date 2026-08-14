@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Expense Tracker Pro</title>
+<style>
+  :root {
+    --primary: #6366f1; --primary-light: #e0e7ff; --primary-dark: #4f46e5;
+    --danger: #ef4444; --danger-light: #fef2f2; --danger-bg: #fef2f2;
+    --warning: #f59e0b; --warning-light: #fffbeb;
+    --success: #10b981; --success-light: #ecfdf5;
+    --info: #3b82f6; --info-light: #eff6ff;
+    --bg: #f8fafc; --card: #ffffff; --text: #1e293b; --text-light: #64748b; --border: #e2e8f0;
+    --radius: 14px; --radius-sm: 10px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06); --shadow-md: 0 4px 12px rgba(0,0,0,0.08); --shadow-lg: 0 20px 60px rgba(0,0,0,0.15);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; padding: 20px; }
+  .container { max-width: 800px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 24px; }
+  header h1 { font-size: 1.7rem; font-weight: 800; background: linear-gradient(135deg, var(--primary), #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.5px; }
+  header p { color: var(--text-light); font-size: 0.9rem; margin-top: 4px; }
+
+  .month-nav { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 20px; }
+  .month-nav button { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .month-nav button:hover { background: var(--primary-light); border-color: var(--primary); }
+  .month-nav .month-label { font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+  .badge-current { background: var(--success); color: white; font-size: 0.65rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .year-select { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); font-family: inherit; font-size: 0.85rem; background: var(--card); cursor: pointer; }
+
+  .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 22px; margin-bottom: 16px; border: 1px solid var(--border); }
+  .card-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-light); font-weight: 700; margin-bottom: 16px; }
+
+  .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
+  .summary-card { background: var(--card); border-radius: var(--radius-sm); padding: 18px 12px; text-align: center; border: 1px solid var(--border); transition: transform 0.2s; }
+  .summary-card:hover { transform: translateY(-2px); }
+  .summary-card .label { font-size: 0.7rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; margin-bottom: 6px; }
+  .summary-card .value { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.5px; }
+  .summary-card.spent .value { color: var(--danger); }
+  .summary-card.budget .value { color: var(--primary); }
+  .summary-card.remaining .value { color: var(--success); }
+
+  .budget-usage { margin-bottom: 16px; }
+  .budget-usage-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .budget-usage-label { font-size: 0.85rem; font-weight: 600; color: var(--text-light); }
+  .budget-usage-pct { font-size: 0.85rem; font-weight: 700; color: var(--text); }
+  .progress-container { width: 100%; height: 10px; background: #e2e8f0; border-radius: 5px; overflow: hidden; }
+  .progress-bar { height: 100%; border-radius: 5px; transition: width 0.5s ease, background 0.5s ease; width: 0%; }
+
+  /* Alert Bell */
+  .alert-bell {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 12px;
+    border: none;
+    font-family: inherit;
+  }
+  .alert-bell.show { display: inline-flex; }
+  .alert-bell.stop { background: var(--danger-light); color: var(--danger); }
+  .alert-bell.danger { background: var(--warning-light); color: #92400e; }
+  .alert-bell.warn { background: #fff7ed; color: #c2410c; }
+  .alert-bell.info { background: var(--info-light); color: #1e40af; }
+  .alert-bell:hover { transform: scale(1.02); }
+  .alert-bell .bell-icon { font-size: 1rem; }
+  .alert-bell .bell-shake { animation: bellShake 1s infinite; }
+  @keyframes bellShake {
+    0%, 100% { transform: rotate(0); }
+    10% { transform: rotate(8deg); }
+    20% { transform: rotate(-8deg); }
+    30% { transform: rotate(4deg); }
+    40% { transform: rotate(-4deg); }
+    50% { transform: rotate(0); }
+  }
+
+  /* Collapsible Alert Message */
+  .alert-message {
+    padding: 14px 16px;
+    border-radius: var(--radius-sm);
+    margin-top: 12px;
+    font-weight: 600;
+    font-size: 0.92rem;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    line-height: 1.4;
+    animation: slideDown 0.3s ease;
+  }
+  .alert-message.show { display: flex; }
+  .alert-message.stop { background: var(--danger-light); color: #991b1b; border: 1px solid #fecaca; }
+  .alert-message.danger { background: var(--warning-light); color: #92400e; border: 1px solid #fde68a; }
+  .alert-message.warn { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+  .alert-message.info { background: var(--info-light); color: #1e40af; border: 1px solid #bfdbfe; }
+  .alert-message.praise { background: var(--success-light); color: #065f46; border: 1px solid #a7f3d0; }
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* FULL SCREEN MODAL */
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fadeIn 0.3s ease;
+  }
+  .modal-overlay.show { display: flex; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .modal-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 40px 32px;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+    animation: modalIn 0.4s ease;
+    border: 2px solid var(--border);
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.9) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .modal-icon {
+    font-size: 4rem;
+    margin-bottom: 16px;
+    display: block;
+  }
+  .modal-title {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+    letter-spacing: -0.3px;
+  }
+  .modal-body {
+    font-size: 1rem;
+    color: var(--text-light);
+    line-height: 1.6;
+    margin-bottom: 24px;
+  }
+  .modal-body strong { color: var(--text); }
+  .modal-btn {
+    padding: 12px 32px;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    color: white;
+  }
+  .modal-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  .modal-btn:active { transform: translateY(0); }
+
+  .modal-card.stop { border-color: var(--danger); }
+  .modal-card.stop .modal-title { color: var(--danger); }
+  .modal-card.stop .modal-btn { background: var(--danger); }
+  .modal-card.stop .modal-btn:hover { background: #dc2626; }
+
+  .modal-card.danger { border-color: var(--warning); }
+  .modal-card.danger .modal-title { color: #92400e; }
+  .modal-card.danger .modal-btn { background: var(--warning); }
+  .modal-card.danger .modal-btn:hover { background: #d97706; }
+
+  .modal-card.warn { border-color: #f97316; }
+  .modal-card.warn .modal-title { color: #c2410c; }
+  .modal-card.warn .modal-btn { background: #f97316; }
+  .modal-card.warn .modal-btn:hover { background: #ea580c; }
+
+  .modal-card.info { border-color: var(--info); }
+  .modal-card.info .modal-title { color: #1e40af; }
+  .modal-card.info .modal-btn { background: var(--info); }
+  .modal-card.info .modal-btn:hover { background: #2563eb; }
+
+  .insights-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 14px; }
+  .insight-item { display: flex; align-items: center; gap: 10px; background: #f8fafc; padding: 12px 14px; border-radius: var(--radius-sm); font-size: 0.85rem; }
+  .insight-icon { font-size: 1.1rem; flex-shrink: 0; }
+  .insight-text { color: var(--text-light); line-height: 1.3; }
+  .insight-text strong { color: var(--text); font-weight: 700; display: block; font-size: 1rem; }
+  .insight-text .positive { color: var(--success); }
+  .insight-text .negative { color: var(--danger); }
+
+  .form-group { margin-bottom: 12px; }
+  .form-group label { display: block; font-size: 0.75rem; font-weight: 700; margin-bottom: 5px; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.05em; }
+  .form-group input, .form-group select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; font-family: inherit; transition: border 0.2s, box-shadow 0.2s; background: var(--card); }
+  .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+  .form-row { display: grid; grid-template-columns: 2fr 1fr 1.2fr; gap: 10px; align-items: end; }
+
+  .btn { padding: 10px 16px; border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: #e2e8f0; }
+  .btn-mic { background: var(--success); color: white; }
+  .btn-mic:hover { background: #059669; }
+  .btn-mic.recording { background: var(--danger); animation: pulse 1.2s infinite; }
+  .btn-ghost { background: transparent; color: var(--text-light); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--bg); color: var(--text); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+  .voice-status { font-size: 0.8rem; color: var(--text-light); margin-top: 8px; min-height: 18px; }
+  .voice-status.listening { color: var(--danger); font-weight: 600; }
+
+  .budget-settings { background: #f8fafc; border-radius: var(--radius-sm); padding: 14px; margin-top: 14px; border: 1px dashed var(--border); }
+  .budget-settings.locked { background: var(--danger-light); border: 1px dashed #fecaca; }
+  .budget-lock-msg { font-size: 0.8rem; color: var(--text-light); margin-top: 8px; display: flex; align-items: center; gap: 6px; }
+  .budget-lock-msg.locked { color: var(--danger); font-weight: 600; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1.5fr; gap: 16px; }
+
+  .cat-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .cat-item:last-child { border-bottom: none; }
+  .cat-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .cat-info { flex: 1; }
+  .cat-name { font-size: 0.85rem; font-weight: 600; display: flex; justify-content: space-between; }
+  .cat-bar-bg { height: 6px; background: #e2e8f0; border-radius: 3px; margin-top: 4px; overflow: hidden; }
+  .cat-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+  .cat-meta { font-size: 0.75rem; color: var(--text-light); margin-top: 2px; }
+
+  .expense-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f8fafc; border-radius: var(--radius-sm); margin-bottom: 8px; border-left: 3px solid var(--primary); transition: background 0.2s; }
+  .expense-item:hover { background: #f1f5f9; }
+  .expense-item .desc { font-weight: 600; font-size: 0.9rem; }
+  .expense-item .meta { font-size: 0.75rem; color: var(--text-light); margin-top: 2px; }
+  .expense-item .amount { font-weight: 700; font-size: 1rem; }
+  .expense-item .delete { background: none; border: none; color: var(--text-light); cursor: pointer; font-size: 1rem; padding: 4px; margin-left: 8px; border-radius: 4px; transition: all 0.2s; }
+  .expense-item .delete:hover { color: var(--danger); background: var(--danger-light); }
+
+  .empty-state { text-align: center; padding: 30px; color: var(--text-light); }
+  .empty-state .icon { font-size: 2.5rem; margin-bottom: 10px; opacity: 0.4; }
+
+  .export-btns { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+
+  .history-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .history-tab { padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; color: var(--text-light); background: var(--bg); border: 1px solid var(--border); font-family: inherit; }
+  .history-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+  .history-content { display: none; }
+  .history-content.active { display: block; }
+
+  .history-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+  .history-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 10px; text-align: center; cursor: pointer; transition: all 0.2s; }
+  .history-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  .history-card.current { border: 2px solid var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+  .history-card .h-month { font-weight: 700; font-size: 0.85rem; }
+  .history-card .h-spend { font-size: 1.1rem; font-weight: 800; margin: 4px 0; }
+  .history-card .h-budget { font-size: 0.7rem; color: var(--text-light); }
+  .history-card .h-bar { height: 5px; background: #e2e8f0; border-radius: 3px; margin-top: 8px; overflow: hidden; }
+  .history-card .h-bar-fill { height: 100%; border-radius: 3px; }
+
+  .year-summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+
+  @media (max-width: 640px) {
+    .summary-grid { grid-template-columns: 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+    .two-col { grid-template-columns: 1fr; }
+    .insights-grid { grid-template-columns: 1fr; }
+    .year-summary-grid { grid-template-columns: 1fr; }
+    .history-grid { grid-template-columns: repeat(2, 1fr); }
+    .modal-card { padding: 32px 24px; }
+    .modal-icon { font-size: 3rem; }
+    .modal-title { font-size: 1.2rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- FULL SCREEN MODAL -->
+<div class="modal-overlay" id="budgetModal">
+  <div class="modal-card" id="modalCard">
+    <span class="modal-icon" id="modalIcon">&#128721;</span>
+    <div class="modal-title" id="modalTitle">Budget Alert</div>
+    <div class="modal-body" id="modalBody">Message here</div>
+    <button class="modal-btn" id="modalBtn" onclick="dismissModal()">Got it</button>
+  </div>
+</div>
+
+<div class="container">
+  <header>
+    <h1>Expense Tracker Pro</h1>
+    <p>Track every month. See your year. Own your money.</p>
+  </header>
+
+  <div class="month-nav">
+    <button onclick="changeMonth(-1)">&#9664;</button>
+    <div class="month-label">
+      <span id="navMonthYear">August 2026</span>
+      <span class="badge-current" id="navCurrentBadge" style="display:none;">Current</span>
+    </div>
+    <button onclick="changeMonth(1)">&#9654;</button>
+    <select class="year-select" id="yearSelect" onchange="changeYear(this.value)"></select>
+  </div>
+
+  <div class="summary-grid">
+    <div class="summary-card spent">
+      <div class="label">Total Spent</div>
+      <div class="value" id="totalSpent">Rs.0</div>
+    </div>
+    <div class="summary-card budget">
+      <div class="label">Monthly Budget</div>
+      <div class="value" id="budgetDisplay">--</div>
+    </div>
+    <div class="summary-card remaining">
+      <div class="label">Remaining</div>
+      <div class="value" id="remainingDisplay">--</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="budget-usage-header">
+      <span class="budget-usage-label">Budget Usage</span>
+      <span class="budget-usage-pct" id="budgetPct">0%</span>
+    </div>
+    <div class="progress-container">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <button class="alert-bell" id="alertBell" onclick="toggleAlertMessage()">
+      <span class="bell-icon bell-shake">&#128276;</span>
+      <span id="alertBellText">Alert</span>
+    </button>
+    <div class="alert-message" id="alertMessage"></div>
+    <div class="insights-grid" id="insightsGrid"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Add New Expense</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" id="descInput" placeholder="e.g. Grocery shopping">
+      </div>
+      <div class="form-group">
+        <label>Amount (Rs.)</label>
+        <input type="number" id="amountInput" placeholder="0" min="1">
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="categoryInput">
+          <option value="Food">Food</option>
+          <option value="Transport">Transport</option>
+          <option value="Shopping">Shopping</option>
+          <option value="Bills">Bills</option>
+          <option value="Entertainment">Entertainment</option>
+          <option value="Health">Health</option>
+          <option value="Education">Education</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+      <button class="btn btn-primary" onclick="addExpense()">+ Add</button>
+      <button class="btn btn-mic" id="micBtn" onclick="toggleVoice()">Voice</button>
+      <button class="btn btn-ghost" onclick="clearForm()">Clear Form</button>
+    </div>
+    <div class="voice-status" id="voiceStatus"></div>
+
+    <div class="budget-settings" id="budgetSettingsBox">
+      <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
+        <div class="form-group" style="flex:1; min-width:140px; margin-bottom:0;">
+          <label id="budgetLabel">Set Budget</label>
+          <input type="number" id="budgetInput" placeholder="Enter monthly budget..." min="1">
+        </div>
+        <button class="btn btn-secondary" id="budgetBtn" onclick="updateBudget()">Update</button>
+      </div>
+      <div class="budget-lock-msg" id="budgetLockMsg"></div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">By Category</div>
+      <div id="categoryBreakdown">
+        <div class="empty-state"><div class="icon">&#128194;</div><p>No data yet</p></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Expenses</div>
+      <div id="expenseList">
+        <div class="empty-state"><div class="icon">&#128221;</div><p>No expenses yet. Add your first one above!</p></div>
+      </div>
+      <div class="export-btns">
+        <button class="btn btn-secondary" onclick="exportMonthCSV()">Export Month CSV</button>
+        <button class="btn btn-secondary" onclick="exportAllCSV()">Export All History</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="history-tabs">
+      <button class="history-tab active" onclick="switchHistoryTab('allmonths', this)">All Months</button>
+      <button class="history-tab" onclick="switchHistoryTab('yearsummary', this)">Year Summary</button>
+    </div>
+    <div id="allmonths" class="history-content active">
+      <div class="history-grid" id="historyGrid"></div>
+    </div>
+    <div id="yearsummary" class="history-content">
+      <div class="year-summary-grid">
+        <div class="summary-card spent">
+          <div class="label">Yearly Total</div>
+          <div class="value" id="yearTotal">Rs.0</div>
+        </div>
+        <div class="summary-card budget">
+          <div class="label">Monthly Average</div>
+          <div class="value" id="yearAvg">Rs.0</div>
+        </div>
+        <div class="summary-card remaining">
+          <div class="label">Tracked Months</div>
+          <div class="value" id="trackedMonths">0</div>
+        </div>
+      </div>
+      <div class="insights-grid" id="yearInsights"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+
+const CATEGORIES = {
+  Food: '#ef4444', Transport: '#3b82f6', Shopping: '#a855f7', Bills: '#f59e0b',
+  Entertainment: '#ec4899', Health: '#10b981', Education: '#6366f1', Other: '#64748b'
+};
+
+let currentDate = new Date();
+let currentYear = currentDate.getFullYear();
+let currentMonth = currentDate.getMonth();
+let viewingYear = currentYear;
+let viewingMonth = currentMonth;
+let alertExpanded = false;
+
+function getStorageKey(year, month) { return 'expenses_' + year + '_' + month; }
+function getBudgetKey(year, month) { return 'budget_' + year + '_' + month; }
+function getBudgetMetaKey(year, month) { return 'budget_meta_' + year + '_' + month; }
+function getAlertSeenKey(year, month) { return 'alert_seen_' + year + '_' + month; }
+
+function getExpenses(year, month) {
+  const raw = localStorage.getItem(getStorageKey(year, month));
+  return raw ? JSON.parse(raw) : [];
+}
+function setExpenses(year, month, data) {
+  localStorage.setItem(getStorageKey(year, month), JSON.stringify(data));
+}
+function getBudget(year, month) {
+  const raw = localStorage.getItem(getBudgetKey(year, month));
+  return raw ? parseFloat(raw) : null;
+}
+function setBudget(year, month, value) {
+  if (value === null || value === undefined) {
+    localStorage.removeItem(getBudgetKey(year, month));
+    return;
+  }
+  localStorage.setItem(getBudgetKey(year, month), value.toString());
+}
+function getBudgetMeta(year, month) {
+  const raw = localStorage.getItem(getBudgetMetaKey(year, month));
+  return raw ? JSON.parse(raw) : { originalBudget: null, changeCount: 0 };
+}
+function setBudgetMeta(year, month, meta) {
+  localStorage.setItem(getBudgetMetaKey(year, month), JSON.stringify(meta));
+}
+function getSeenAlerts(year, month) {
+  const raw = localStorage.getItem(getAlertSeenKey(year, month));
+  return raw ? JSON.parse(raw) : [];
+}
+function markAlertSeen(year, month, level) {
+  const seen = getSeenAlerts(year, month);
+  if (seen.indexOf(level) === -1) {
+    seen.push(level);
+    localStorage.setItem(getAlertSeenKey(year, month), JSON.stringify(seen));
+  }
+}
+
+function getAlertLevel(total, budget) {
+  if (!budget || budget <= 0) return 0;
+  const pct = (total / budget) * 100;
+  if (pct >= 100) return 4;
+  if (pct >= 90) return 3;
+  if (pct >= 80) return 2;
+  if (pct >= 50) return 1;
+  return 0;
+}
+
+function getAlertConfig(level) {
+  const configs = {
+    4: { type: 'stop', icon: '&#128721;', title: 'STOP!', msg: 'You have blown your entire budget! No more spending this month. Put the card down.', label: 'Budget Exceeded' },
+    3: { type: 'danger', icon: '&#128680;', title: 'Slow Down!', msg: 'You have spent 90% of your budget. Only a little left. Tighten up!', label: '90% Used' },
+    2: { type: 'warn', icon: '&#9888;&#65039;', title: 'Heads Up!', msg: 'You are at 80% of your budget. Easy on the spending!', label: '80% Used' },
+    1: { type: 'info', icon: '&#128161;', title: 'Halfway There', msg: 'You are at 50% of your budget. Halfway through the month, halfway through the money?', label: '50% Used' }
+  };
+  return configs[level] || null;
+}
+
+// ===================== FULL SCREEN MODAL =====================
+function showModal(level) {
+  const config = getAlertConfig(level);
+  if (!config) return;
+  document.getElementById('modalIcon').innerHTML = config.icon;
+  document.getElementById('modalTitle').textContent = config.title;
+  document.getElementById('modalBody').innerHTML = config.msg;
+  document.getElementById('modalCard').className = 'modal-card ' + config.type;
+  document.getElementById('budgetModal').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function dismissModal() {
+  document.getElementById('budgetModal').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+function maybeShowModal(total, budget, year, month) {
+  const level = getAlertLevel(total, budget);
+  const seen = getSeenAlerts(year, month);
+  if (level > 0 && seen.indexOf(level) === -1) {
+    showModal(level);
+    markAlertSeen(year, month, level);
+  }
+}
+
+// ===================== BUDGET LOGIC =====================
+function updateBudget() {
+  const input = document.getElementById('budgetInput');
+  const val = parseFloat(input.value);
+  if (!val || val <= 0) {
+    alert('Please enter a valid budget amount');
+    return;
+  }
+  const expenses = getExpenses(viewingYear, viewingMonth);
+  const oldTotal = expenses.reduce((s, e) => s + e.amount, 0);
+  const oldLevel = getAlertLevel(oldTotal, getBudget(viewingYear, viewingMonth));
+
+  const meta = getBudgetMeta(viewingYear, viewingMonth);
+  const currentBudget = getBudget(viewingYear, viewingMonth);
+
+  if (currentBudget === null || currentBudget === undefined) {
+    setBudget(viewingYear, viewingMonth, val);
+    meta.originalBudget = val;
+    meta.changeCount = 0;
+    setBudgetMeta(viewingYear, viewingMonth, meta);
+    const newLevel = getAlertLevel(oldTotal, val);
+    if (newLevel > oldLevel) maybeShowModal(oldTotal, val, viewingYear, viewingMonth);
+    render();
+    return;
+  }
+  if (meta.changeCount >= 2) {
+    alert('Budget is locked. You have used all your changes for this month.');
+    return;
+  }
+  const oldBudget = currentBudget;
+  setBudget(viewingYear, viewingMonth, val);
+  meta.changeCount += 1;
+  setBudgetMeta(viewingYear, viewingMonth, meta);
+
+  const newLevel = getAlertLevel(oldTotal, val);
+  if (newLevel > oldLevel) maybeShowModal(oldTotal, val, viewingYear, viewingMonth);
+
+  render();
+
+  if (val < oldBudget) {
+    showAlertMessage('praise', 'Respect — you tightened your budget from Rs.' + oldBudget.toLocaleString() + ' to Rs.' + val.toLocaleString() + ". That's discipline!");
+  } else if ((oldTotal / oldBudget) * 100 >= 80) {
+    showAlertMessage('danger', 'Nice try — you bumped your budget after spending ' + ((oldTotal / oldBudget) * 100).toFixed(0) + '%. The original was Rs.' + meta.originalBudget.toLocaleString() + '. Stay honest!');
+  }
+}
+
+function showAlertMessage(type, msg) {
+  const el = document.getElementById('alertMessage');
+  el.className = 'alert-message show ' + type;
+  el.textContent = msg;
+  alertExpanded = true;
+  updateAlertBell();
+}
+
+function clearAlertMessage() {
+  const el = document.getElementById('alertMessage');
+  el.className = 'alert-message';
+  el.textContent = '';
+  alertExpanded = false;
+}
+
+function toggleAlertMessage() {
+  const el = document.getElementById('alertMessage');
+  if (alertExpanded) {
+    clearAlertMessage();
+  } else {
+    const expenses = getExpenses(viewingYear, viewingMonth);
+    const total = expenses.reduce((s, e) => s + e.amount, 0);
+    const budget = getBudget(viewingYear, viewingMonth);
+    const level = getAlertLevel(total, budget);
+    const config = getAlertConfig(level);
+    if (config) {
+      showAlertMessage(config.type, config.msg);
+    }
+  }
+}
+
+function updateAlertBell() {
+  const expenses = getExpenses(viewingYear, viewingMonth);
+  const total = expenses.reduce((s, e) => s + e.amount, 0);
+  const budget = getBudget(viewingYear, viewingMonth);
+  const level = getAlertLevel(total, budget);
+  const bell = document.getElementById('alertBell');
+  const bellText = document.getElementById('alertBellText');
+
+  if (level > 0) {
+    const config = getAlertConfig(level);
+    bell.className = 'alert-bell show ' + config.type;
+    bellText.textContent = config.label;
+    bell.style.display = 'inline-flex';
+  } else {
+    bell.className = 'alert-bell';
+    bell.style.display = 'none';
+    clearAlertMessage();
+  }
+}
+
+// ===================== EXPENSE LOGIC =====================
+function addExpense() {
+  const desc = document.getElementById('descInput').value.trim();
+  const amount = parseFloat(document.getElementById('amountInput').value);
+  const category = document.getElementById('categoryInput').value;
+  if (!desc || !amount || amount <= 0) {
+    alert('Please enter a valid description and amount');
+    return;
+  }
+
+  const expenses = getExpenses(viewingYear, viewingMonth);
+  const oldTotal = expenses.reduce((s, e) => s + e.amount, 0);
+  const oldLevel = getAlertLevel(oldTotal, getBudget(viewingYear, viewingMonth));
+
+  expenses.unshift({ id: Date.now(), desc: desc, amount: amount, category: category, date: new Date().toISOString() });
+  setExpenses(viewingYear, viewingMonth, expenses);
+
+  const newTotal = oldTotal + amount;
+  const newLevel = getAlertLevel(newTotal, getBudget(viewingYear, viewingMonth));
+  if (newLevel > oldLevel) maybeShowModal(newTotal, getBudget(viewingYear, viewingMonth), viewingYear, viewingMonth);
+
+  clearForm();
+  render();
+}
+
+function clearForm() {
+  document.getElementById('descInput').value = '';
+  document.getElementById('amountInput').value = '';
+  document.getElementById('categoryInput').value = 'Food';
+  document.getElementById('voiceStatus').textContent = '';
+}
+
+function deleteExpense(id) {
+  if (!confirm('Delete this expense?')) return;
+  let expenses = getExpenses(viewingYear, viewingMonth);
+  expenses = expenses.filter(e => e.id !== id);
+  setExpenses(viewingYear, viewingMonth, expenses);
+  render();
+}
+
+// ===================== VOICE COMMAND =====================
+let recognition = null;
+let isListening = false;
+
+function initVoice() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    document.getElementById('voiceStatus').textContent = 'Voice not supported in this browser. Try Chrome.';
+    document.getElementById('micBtn').style.display = 'none';
+    return;
+  }
+  recognition = new SpeechRecognition();
+  recognition.lang = 'en-IN';
+  recognition.continuous = false;
+  recognition.interimResults = false;
+
+  recognition.onstart = function() {
+    isListening = true;
+    document.getElementById('micBtn').classList.add('recording');
+    document.getElementById('voiceStatus').textContent = 'Listening... Say: "Coffee 50 Food"';
+    document.getElementById('voiceStatus').classList.add('listening');
+  };
+  recognition.onend = function() {
+    isListening = false;
+    document.getElementById('micBtn').classList.remove('recording');
+    document.getElementById('voiceStatus').classList.remove('listening');
+  };
+  recognition.onresult = function(e) {
+    const transcript = e.results[0][0].transcript.trim();
+    document.getElementById('voiceStatus').textContent = 'Heard: "' + transcript + '"';
+    parseVoiceCommand(transcript);
+  };
+  recognition.onerror = function(e) {
+    document.getElementById('voiceStatus').textContent = 'Error: ' + e.error;
+    isListening = false;
+    document.getElementById('micBtn').classList.remove('recording');
+  };
+}
+
+function toggleVoice() {
+  if (!recognition) initVoice();
+  if (!recognition) return;
+  if (isListening) recognition.stop();
+  else recognition.start();
+}
+
+function parseVoiceCommand(text) {
+  const numMatch = text.match(/(\d+)/);
+  if (!numMatch) {
+    document.getElementById('voiceStatus').textContent = 'Could not find amount. Try: "Coffee 50 Food"';
+    return;
+  }
+  const amount = parseInt(numMatch[1]);
+  const amountIndex = text.indexOf(numMatch[1]);
+  let desc = text.substring(0, amountIndex).trim().replace(/[.,;]$/, '');
+  if (!desc) desc = 'Expense';
+  let catHint = text.substring(amountIndex + numMatch[1].length).trim().toLowerCase();
+
+  let category = 'Other';
+  const catMap = {
+    food: 'Food', eat: 'Food', lunch: 'Food', dinner: 'Food', breakfast: 'Food', grocery: 'Food', groceries: 'Food',
+    transport: 'Transport', travel: 'Transport', petrol: 'Transport', diesel: 'Transport', cab: 'Transport', auto: 'Transport', bus: 'Transport', train: 'Transport',
+    shopping: 'Shopping', shop: 'Shopping', clothes: 'Shopping', dress: 'Shopping', amazon: 'Shopping', flipkart: 'Shopping',
+    bill: 'Bills', bills: 'Bills', electricity: 'Bills', water: 'Bills', rent: 'Bills', wifi: 'Bills', internet: 'Bills', phone: 'Bills',
+    entertainment: 'Entertainment', movie: 'Entertainment', netflix: 'Entertainment', game: 'Entertainment', games: 'Entertainment', fun: 'Entertainment',
+    health: 'Health', doctor: 'Health', medicine: 'Health', medical: 'Health', hospital: 'Health', gym: 'Health',
+    education: 'Education', book: 'Education', books: 'Education', course: 'Education', learn: 'Education', class: 'Education'
+  };
+  for (const key in catMap) {
+    if (catHint.indexOf(key) !== -1) { category = catMap[key]; break; }
+  }
+
+  document.getElementById('descInput').value = desc.charAt(0).toUpperCase() + desc.slice(1);
+  document.getElementById('amountInput').value = amount;
+  document.getElementById('categoryInput').value = category;
+  document.getElementById('voiceStatus').textContent = 'Parsed: ' + desc + ' Rs.' + amount + ' (' + category + ') — click Add to confirm';
+}
+
+// ===================== RENDER =====================
+function render() {
+  const expenses = getExpenses(viewingYear, viewingMonth);
+  const total = expenses.reduce((s, e) => s + e.amount, 0);
+  const budget = getBudget(viewingYear, viewingMonth);
+  const meta = getBudgetMeta(viewingYear, viewingMonth);
+  const isCurrentMonth = (viewingYear === currentYear && viewingMonth === currentMonth);
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  document.getElementById('navMonthYear').textContent = monthNames[viewingMonth] + ' ' + viewingYear;
+  document.getElementById('navCurrentBadge').style.display = isCurrentMonth ? 'inline-block' : 'none';
+
+  const yearSelect = document.getElementById('yearSelect');
+  if (yearSelect.children.length === 0) {
+    for (let y = currentYear - 2; y <= currentYear + 1; y++) {
+      const opt = document.createElement('option');
+      opt.value = y; opt.textContent = y;
+      if (y === viewingYear) opt.selected = true;
+      yearSelect.appendChild(opt);
+    }
+  } else { yearSelect.value = viewingYear; }
+
+  document.getElementById('totalSpent').textContent = 'Rs.' + total.toLocaleString();
+  document.getElementById('budgetDisplay').textContent = budget !== null ? 'Rs.' + budget.toLocaleString() : '--';
+  document.getElementById('remainingDisplay').textContent = budget !== null ? 'Rs.' + Math.max(0, budget - total).toLocaleString() : '--';
+
+  const bar = document.getElementById('progressBar');
+  const pctEl = document.getElementById('budgetPct');
+  if (budget && budget > 0) {
+    const pct = Math.min(100, (total / budget) * 100);
+    bar.style.width = pct + '%';
+    pctEl.textContent = pct.toFixed(0) + '%';
+    if (pct >= 100) { bar.style.background = 'var(--danger)'; pctEl.style.color = 'var(--danger)'; }
+    else if (pct >= 80) { bar.style.background = 'var(--warning)'; pctEl.style.color = 'var(--warning)'; }
+    else if (pct >= 50) { bar.style.background = 'var(--info)'; pctEl.style.color = 'var(--info)'; }
+    else { bar.style.background = 'var(--success)'; pctEl.style.color = 'var(--success)'; }
+  } else {
+    bar.style.width = '0%';
+    pctEl.textContent = '0%';
+    pctEl.style.color = 'var(--text-light)';
+  }
+
+  // Budget settings
+  const budgetInput = document.getElementById('budgetInput');
+  const budgetBtn = document.getElementById('budgetBtn');
+  const budgetLabel = document.getElementById('budgetLabel');
+  const lockMsg = document.getElementById('budgetLockMsg');
+  const settingsBox = document.getElementById('budgetSettingsBox');
+
+  if (budget !== null) budgetInput.value = budget;
+  else { budgetInput.value = ''; budgetInput.placeholder = 'Enter your monthly budget...'; }
+
+  if (!isCurrentMonth) {
+    budgetBtn.disabled = false; budgetInput.disabled = false; budgetInput.style.opacity = '1';
+    budgetBtn.textContent = 'Update';
+    budgetLabel.textContent = 'Set Budget for ' + monthNames[viewingMonth] + ' ' + viewingYear;
+    lockMsg.textContent = budget !== null ? 'Budget: Rs.' + budget.toLocaleString() : 'No budget set for this month.';
+    lockMsg.className = 'budget-lock-msg';
+    settingsBox.className = 'budget-settings';
+  } else {
+    if (budget === null) {
+      budgetBtn.disabled = false; budgetInput.disabled = false; budgetInput.style.opacity = '1';
+      budgetBtn.textContent = 'Set Budget';
+      budgetLabel.textContent = 'Set Budget for ' + monthNames[viewingMonth] + ' ' + viewingYear;
+      lockMsg.textContent = 'Set your budget for this month.';
+      lockMsg.className = 'budget-lock-msg';
+      settingsBox.className = 'budget-settings';
+    } else if (meta.changeCount >= 2) {
+      budgetBtn.disabled = true; budgetInput.disabled = true; budgetInput.style.opacity = '0.5';
+      budgetBtn.textContent = 'Locked';
+      budgetLabel.textContent = 'Budget for ' + monthNames[viewingMonth] + ' ' + viewingYear;
+      lockMsg.innerHTML = 'Budget locked for this month. Original: Rs.' + meta.originalBudget.toLocaleString() + '. You used all ' + meta.changeCount + ' changes.';
+      lockMsg.className = 'budget-lock-msg locked';
+      settingsBox.className = 'budget-settings locked';
+    } else {
+      const left = 2 - meta.changeCount;
+      budgetBtn.disabled = false; budgetInput.disabled = false; budgetInput.style.opacity = '1';
+      budgetBtn.textContent = 'Update';
+      budgetLabel.textContent = 'Set Budget for ' + monthNames[viewingMonth] + ' ' + viewingYear;
+      lockMsg.textContent = 'Budget set: Rs.' + meta.originalBudget.toLocaleString() + '. You have ' + left + ' change' + (left !== 1 ? 's' : '') + ' left this month to adjust your Budget.';
+      lockMsg.className = 'budget-lock-msg';
+      settingsBox.className = 'budget-settings';
+    }
+  }
+
+  // Alert bell
+  updateAlertBell();
+
+  // Insights
+  if (budget && budget > 0) {
+    const daysInMonth = new Date(viewingYear, viewingMonth + 1, 0).getDate();
+    const dayOfMonth = Math.min(currentDate.getDate(), daysInMonth);
+    const daysLeft = Math.max(1, daysInMonth - dayOfMonth);
+    const dailyBudget = Math.max(0, (budget - total) / daysLeft);
+    const projected = total > 0 && dayOfMonth > 0 ? (total / dayOfMonth) * daysInMonth : 0;
+    const diff = projected - budget;
+    const expectedSpend = (budget / daysInMonth) * dayOfMonth;
+    const paceDiff = total - expectedSpend;
+
+    let html = '';
+    html += '<div class="insight-item"><span class="insight-icon">&#128161;</span><div class="insight-text">You can spend per day<strong>Rs.' + Math.round(dailyBudget).toLocaleString() + '/day</strong></div></div>';
+    html += '<div class="insight-item"><span class="insight-icon">&#128197;</span><div class="insight-text">Days left this month<strong>' + daysLeft + ' days</strong></div></div>';
+
+    if (projected > 0 && dayOfMonth > 0) {
+      if (diff > 0) html += '<div class="insight-item"><span class="insight-icon">&#128202;</span><div class="insight-text">At this rate, you will overspend<strong class="negative">Rs.' + Math.round(diff).toLocaleString() + '</strong></div></div>';
+      else html += '<div class="insight-item"><span class="insight-icon">&#128176;</span><div class="insight-text">At this rate, you will save<strong class="positive">Rs.' + Math.round(Math.abs(diff)).toLocaleString() + '</strong></div></div>';
+    } else {
+      html += '<div class="insight-item"><span class="insight-icon">&#128176;</span><div class="insight-text">At this rate, you will save<strong class="positive">Rs.' + Math.round(budget).toLocaleString() + '</strong></div></div>';
+    }
+
+    if (total > 0) {
+      if (paceDiff > 0) html += '<div class="insight-item"><span class="insight-icon">&#9889;</span><div class="insight-text">You are spending<strong class="negative">Rs.' + Math.round(paceDiff).toLocaleString() + ' more</strong>than expected pace</div></div>';
+      else html += '<div class="insight-item"><span class="insight-icon">&#9889;</span><div class="insight-text">You are spending<strong class="positive">Rs.' + Math.round(Math.abs(paceDiff)).toLocaleString() + ' less</strong>than expected pace. Nice!</div></div>';
+    } else {
+      html += '<div class="insight-item"><span class="insight-icon">&#9889;</span><div class="insight-text">Spending pace<strong class="positive">On track</strong>Keep it up!</div></div>';
+    }
+    document.getElementById('insightsGrid').innerHTML = html;
+  } else {
+    document.getElementById('insightsGrid').innerHTML = '<div class="insight-item"><span class="insight-icon">&#128161;</span><div class="insight-text">Set a budget to see smart insights</div></div><div class="insight-item"><span class="insight-icon">&#128197;</span><div class="insight-text">Track your spending daily</div></div>';
+  }
+
+  // Expense list (NO Clear All)
+  const listEl = document.getElementById('expenseList');
+  if (expenses.length === 0) {
+    listEl.innerHTML = '<div class="empty-state"><div class="icon">&#128221;</div><p>No expenses yet. Add your first one above!</p></div>';
+  } else {
+    listEl.innerHTML = expenses.map(e => '<div class="expense-item" style="border-left-color:' + CATEGORIES[e.category] + '"><div><div class="desc">' + e.desc + '</div><div class="meta">' + e.category + ' &bull; ' + new Date(e.date).toLocaleDateString() + '</div></div><div style="display:flex; align-items:center;"><div class="amount">Rs.' + e.amount.toLocaleString() + '</div><button class="delete" onclick="deleteExpense(' + e.id + ')" title="Delete">&#10005;</button></div></div>').join('');
+  }
+
+  // Category breakdown
+  const catTotals = {};
+  expenses.forEach(e => { catTotals[e.category] = (catTotals[e.category] || 0) + e.amount; });
+  const catEl = document.getElementById('categoryBreakdown');
+  if (Object.keys(catTotals).length === 0) {
+    catEl.innerHTML = '<div class="empty-state"><div class="icon">&#128194;</div><p>No data yet</p></div>';
+  } else {
+    catEl.innerHTML = Object.entries(catTotals).sort((a,b) => b[1]-a[1]).map(([cat, amt]) => {
+      const pct = total > 0 ? (amt/total*100).toFixed(0) : 0;
+      return '<div class="cat-item"><div class="cat-dot" style="background:' + CATEGORIES[cat] + '"></div><div class="cat-info"><div class="cat-name"><span>' + cat + '</span><span>Rs.' + amt.toLocaleString() + '</span></div><div class="cat-bar-bg"><div class="cat-bar-fill" style="width:' + pct + '%; background:' + CATEGORIES[cat] + '"></div></div><div class="cat-meta">' + pct + '% of total</div></div></div>';
+    }).join('');
+  }
+
+  renderHistoryGrid();
+  renderYearSummary();
+}
+
+function renderHistoryGrid() {
+  const grid = document.getElementById('historyGrid');
+  let html = '';
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  for (let m = 0; m < 12; m++) {
+    const exps = getExpenses(viewingYear, m);
+    const spend = exps.reduce((s, e) => s + e.amount, 0);
+    const bud = getBudget(viewingYear, m);
+    const isCurrent = (viewingYear === currentYear && m === currentMonth);
+    const pct = bud && bud > 0 ? Math.min(100, (spend / bud) * 100) : 0;
+    let color = 'var(--success)';
+    if (pct >= 100) color = 'var(--danger)';
+    else if (pct >= 80) color = 'var(--warning)';
+    else if (pct >= 50) color = 'var(--info)';
+    html += '<div class="history-card ' + (isCurrent ? 'current' : '') + '" onclick="jumpToMonth(' + viewingYear + ', ' + m + ')"><div class="h-month">' + monthNames[m] + ' ' + viewingYear + '</div><div class="h-spend" style="color:' + (spend > 0 ? 'var(--text)' : 'var(--text-light)') + '">Rs.' + spend.toLocaleString() + '</div><div class="h-budget">' + (bud !== null ? 'of Rs.' + bud.toLocaleString() : 'No budget') + '</div><div class="h-bar"><div class="h-bar-fill" style="width:' + pct + '%; background:' + color + '"></div></div></div>';
+  }
+  grid.innerHTML = html;
+}
+
+function renderYearSummary() {
+  let yearTotal = 0, tracked = 0, monthTotals = [];
+  for (let m = 0; m < 12; m++) {
+    const exps = getExpenses(viewingYear, m);
+    const spend = exps.reduce((s, e) => s + e.amount, 0);
+    if (spend > 0 || exps.length > 0) { yearTotal += spend; tracked++; monthTotals.push(spend); }
+  }
+  document.getElementById('yearTotal').textContent = 'Rs.' + yearTotal.toLocaleString();
+  document.getElementById('yearAvg').textContent = tracked > 0 ? 'Rs.' + Math.round(yearTotal / tracked).toLocaleString() : 'Rs.0';
+  document.getElementById('trackedMonths').textContent = tracked;
+
+  const insightsEl = document.getElementById('yearInsights');
+  if (monthTotals.length === 0) {
+    insightsEl.innerHTML = '<div class="insight-item">No data for this year yet.</div>';
+  } else {
+    const max = Math.max.apply(null, monthTotals);
+    const min = Math.min.apply(null, monthTotals);
+    const maxMonth = monthTotals.indexOf(max);
+    const minMonth = monthTotals.indexOf(min);
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    let html = '';
+    html += '<div class="insight-item"><span class="insight-icon">&#128293;</span><div class="insight-text">Highest month<strong>Rs.' + max.toLocaleString() + '</strong>' + monthNames[maxMonth] + '</div></div>';
+    html += '<div class="insight-item"><span class="insight-icon">&#128167;</span><div class="insight-text">Lowest month<strong>Rs.' + min.toLocaleString() + '</strong>' + monthNames[minMonth] + '</div></div>';
+    insightsEl.innerHTML = html;
+  }
+}
+
+function changeMonth(delta) {
+  viewingMonth += delta;
+  if (viewingMonth > 11) { viewingMonth = 0; viewingYear++; }
+  if (viewingMonth < 0) { viewingMonth = 11; viewingYear--; }
+  alertExpanded = false;
+  render();
+}
+function changeYear(y) {
+  viewingYear = parseInt(y);
+  alertExpanded = false;
+  render();
+}
+function goToCurrent() {
+  viewingYear = currentYear;
+  viewingMonth = currentMonth;
+  alertExpanded = false;
+  render();
+}
+function jumpToMonth(y, m) {
+  viewingYear = y;
+  viewingMonth = m;
+  alertExpanded = false;
+  render();
+}
+
+function switchHistoryTab(name, btn) {
+  document.querySelectorAll('.history-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.history-content').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(name).classList.add('active');
+}
+
+function exportMonthCSV() {
+  const expenses = getExpenses(viewingYear, viewingMonth);
+  if (expenses.length === 0) { alert('No expenses to export'); return; }
+  let csv = 'Date,Description,Category,Amount\n';
+  expenses.slice().reverse().forEach(e => {
+    csv += new Date(e.date).toLocaleDateString() + ',"' + e.desc + '",' + e.category + ',' + e.amount + '\n';
+  });
+  downloadCSV(csv, 'expenses_' + viewingYear + '_' + (viewingMonth + 1) + '.csv');
+}
+
+function exportAllCSV() {
+  let csv = 'Year,Month,Date,Description,Category,Amount\n';
+  let hasData = false;
+  for (let y = currentYear - 2; y <= currentYear + 1; y++) {
+    for (let m = 0; m < 12; m++) {
+      const expenses = getExpenses(y, m);
+      if (expenses.length > 0) {
+        hasData = true;
+        expenses.slice().reverse().forEach(e => {
+          csv += y + ',' + (m + 1) + ',' + new Date(e.date).toLocaleDateString() + ',"' + e.desc + '",' + e.category + ',' + e.amount + '\n';
+        });
+      }
+    }
+  }
+  if (!hasData) { alert('No data to export'); return; }
+  downloadCSV(csv, 'all_expenses_history.csv');
+}
+
+function downloadCSV(csv, filename) {
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  initVoice();
+  render();
+});
+
+window.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && document.activeElement.id === 'amountInput') {
+    addExpense();
+  }
+});
+</script>
+</body>
+</html>
